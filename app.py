@@ -134,9 +134,9 @@ def dashboard():
             FROM overtime_requests ot
             JOIN employees e ON ot.employee_id = e.id
             WHERE ot.request_date IN ({placeholders})
-            GROUP BY ot.employee_id
-            HAVING total_hours > 15
-            ORDER BY total_hours DESC
+            GROUP BY e.nik, e.name, e.department
+            HAVING SUM(ot.actual_hours) > 15
+            ORDER BY SUM(ot.actual_hours) DESC
         ''', valid_dates).fetchall()
 
     conn.close()
