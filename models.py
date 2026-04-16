@@ -4,7 +4,9 @@ import sqlite3
 import os
 from datetime import datetime, date
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'payroll.db')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, 'payroll.db')
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
