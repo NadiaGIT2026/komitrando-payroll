@@ -166,8 +166,74 @@ def save_attendance(attendance_list):
     conn.close()
     return {'saved': saved, 'skipped': skipped}
 
-def import_and_save(filepath, format_type='generic'):
+def _parse_attendance_report(df):
+    """Parse Attendance Report format: NIK, Nama Karyawan, In (Earliest Scan), Out (Latest Scan), Status."""
+    attendance = []
+    date_str = None
+    
+    # Try to extract date from filename or use today
+    from datetime import date as date_class
+    date_str = date_class.today().strftime('%Y-%m-%d')
+    
+    for _, row in df.iterrows():
+        nik_col = _find_column(df, ['nik', 'pin', 'id'])
+        in_col = _find_column(df, ['in_(earliest_scan)', 'in', 'clock_in', 'earliest'])
+        out_col = _find_column(df, ['out_(latest_scan)', 'out', 'clock_out', 'latest'])
+        
+        nik = str(row[nik_col]).strip()
+        if not nik or nik == 'nan':
+            continue
+            
+        clock_in = row[in_col] if pd.notna(row[in_col]) else None
+        clock_out = row[out_col] if pd.notna(row[out_col]) else None
+        
+        # Convert time objects to string
+        if clock_in and hasattr(clock_in, 'strftime'):
+            clock_in = clock_in.strftime('%H:%M:%S')
+        elif clock_in:
+            clock_in = str(clock_in)
+            
+        if clock_out and hasattr(clock_out, 'strftime'):
+            clock_out = clock_out.strftime('%H:%M:%S')
+        elif clock_out:
+            clock_out = str(clock_out)
+        
+        attendance.append({
+            'finger_id': nik,
+            'date': date_str,
+            'clock_in': clock_in,
+            'clock_out': clock_out,
+        })
+    
+    return attendance
+
+
+def import_and_save(filepath, format_type='generic', report_date=None):
     """Full import pipeline: parse → process → save."""
+    # Check if it's an Attendance Report format
+    if filepath.endswith(('.xlsx', '.xls')):
+        df_check = pd.read_excel(filepath)
+    else:
+        df_check = pd.read_csv(filepath)
+    
+    cols_lower = [c.strip().lower() for c in df_check.columns]
+    
+    # Detect Attendance Report format
+    if any('nik' in c for c in cols_lower) and any('earliest' in c or 'in' == c for c in cols_lower):
+        df_check.columns = [c.strip().lower().replace(' ', '_') for c in df_check.columns]
+        attendance = _parse_attendance_report(df_check)
+        
+        # Override date if provided
+        if report_date:
+            for att in attendance:
+                att['date'] = report_date
+        
+        result = save_attendance(attendance)
+        result['total_records'] = len(attendance)
+        result['total_attendance'] = len(attendance)
+        return result
+    
+    # Original flow
     records = import_from_csv(filepath, format_type)
     attendance = process_attendance(records)
     result = save_attendance(attendance)
