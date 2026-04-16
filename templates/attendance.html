@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Absensi - Payroll System{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>⏰ Data Absensi</h2>
+    <a href="/attendance/import" class="btn btn-primary"><i class="bi bi-upload"></i> Import dari Fingerprint</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="d-flex align-items-center gap-3">
+            <label class="form-label mb-0">Periode:</label>
+            <input type="month" name="period" class="form-control" style="width:200px" value="{{ period }}">
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>NIK</th>
+                    <th>Nama</th>
+                    <th>Masuk</th>
+                    <th>Pulang</th>
+                    <th>Status</th>
+                    <th>Lembur</th>
+                    <th>Catatan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.date }}</td>
+                    <td>{{ r.nik }}</td>
+                    <td>{{ r.name }}</td>
+                    <td>{{ r.clock_in or '-' }}</td>
+                    <td>{{ r.clock_out or '-' }}</td>
+                    <td>
+                        {% if r.status == 'present' %}
+                        <span class="badge bg-success">Hadir</span>
+                        {% elif r.status == 'absent' %}
+                        <span class="badge bg-danger">Absen</span>
+                        {% elif r.status == 'late' %}
+                        <span class="badge bg-warning">Terlambat</span>
+                        {% else %}
+                        <span class="badge bg-info">{{ r.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.overtime_hours }}j</td>
+                    <td>{{ r.notes }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data absensi untuk periode ini</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

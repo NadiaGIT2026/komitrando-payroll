@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Preview Gaji - Maret 2026{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-1"><i class="bi bi-eye"></i> Preview Gaji — Pabrik 1 (F1 PUSAT)</h3>
+        <span class="badge bg-warning text-dark fs-6">⚠️ PREVIEW 1/3 – 11/3/2026 — Bukan Data Final</span>
+    </div>
+    <div>
+        <span class="text-muted">Data absensi: {{ summary.total_present_days }} hari kehadiran dari {{ summary.total_employees }} karyawan</span>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Karyawan</div>
+            <div class="stat-value">{{ summary.total_employees }}</div>
+            <small class="text-muted">ALL IN: {{ summary.total_all_in }} · Satpam: {{ summary.total_satpam }}</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Jam Lembur</div>
+            <div class="stat-value">{{ "%.1f"|format(summary.total_ot_hours) }}</div>
+            <small class="text-muted">Reguler: {{ "%.1f"|format(summary.total_reg_ot) }} · Libur: {{ "%.1f"|format(summary.total_hol_ot) }}</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Gaji Kotor</div>
+            <div class="stat-value" style="font-size:1.3em">{{ summary.total_gross | rupiah }}</div>
+            <small class="text-muted">Lembur: {{ summary.total_overtime_pay | rupiah }}</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Gaji Bersih</div>
+            <div class="stat-value text-success" style="font-size:1.3em">{{ summary.total_net | rupiah }}</div>
+            <small class="text-muted">Potongan: {{ summary.total_deductions | rupiah }}</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Hari Hadir</div>
+            <div class="stat-value">{{ summary.total_present_days }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Hari Tidak Hadir</div>
+            <div class="stat-value text-danger">{{ summary.total_absent_days }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Keterlambatan</div>
+            <div class="stat-value text-warning">{{ summary.total_late_count }}x</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">BPJS Perusahaan</div>
+            <div class="stat-value" style="font-size:1.3em">{{ summary.total_bpjs_company | rupiah }}</div>
+            <small class="text-muted">Karyawan: {{ summary.total_bpjs_employee | rupiah }}</small>
+        </div>
+    </div>
+</div>
+
+<!-- Department Breakdown -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Ringkasan per Departemen</h5>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Departemen</th>
+                    <th class="text-center">Jumlah</th>
+                    <th class="text-center">Jam Lembur</th>
+                    <th class="text-end">Lembur (Rp)</th>
+                    <th class="text-end">Gaji Kotor</th>
+                    <th class="text-end">Gaji Bersih</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept, d in summary.dept_breakdown.items() %}
+                <tr>
+                    <td><strong>{{ dept }}</strong></td>
+                    <td class="text-center">{{ d.count }}</td>
+                    <td class="text-center">{{ "%.1f"|format(d.ot_hours) }}</td>
+                    <td class="text-end">{{ d.overtime_pay | rupiah }}</td>
+                    <td class="text-end">{{ d.gross | rupiah }}</td>
+                    <td class="text-end">{{ d.net | rupiah }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <td>TOTAL</td>
+                    <td class="text-center">{{ summary.total_employees }}</td>
+                    <td class="text-center">{{ "%.1f"|format(summary.total_ot_hours) }}</td>
+                    <td class="text-end">{{ summary.total_overtime_pay | rupiah }}</td>
+                    <td class="text-end">{{ summary.total_gross | rupiah }}</td>
+                    <td class="text-end">{{ summary.total_net | rupiah }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Cari (NIK / Nama)</label>
+                <input type="text" name="search" class="form-control" value="{{ search }}" placeholder="Ketik NIK atau nama...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Departemen</label>
+                <select name="department" class="form-select">
+                    <option value="">Semua Departemen</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}" {% if selected_dept == dept %}selected{% endif %}>{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Seksi</label>
+                <select name="section" class="form-select">
+                    <option value="">Semua Seksi</option>
+                    {% for sec in sections %}
+                    <option value="{{ sec }}" {% if selected_section == sec %}selected{% endif %}>{{ sec }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Filter</button>
+                    <a href="/payroll/preview" class="btn btn-outline-secondary">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Employee Table -->
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-table"></i> Detail per Karyawan ({{ employees | length }} ditampilkan)</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-striped mb-0" id="previewTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="min-width:60px">NIK</th>
+                        <th style="min-width:150px">Nama</th>
+                        <th>Dept</th>
+                        <th>Seksi</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Hadir</th>
+                        <th class="text-center">Absen</th>
+                        <th class="text-center">Lembur (jam)</th>
+                        <th class="text-center">Telat</th>
+                        <th class="text-end">Gaji Pokok</th>
+                        <th class="text-end">Lembur (Rp)</th>
+                        <th class="text-end">Gaji Kotor</th>
+                        <th class="text-end">BPJS Kary.</th>
+                        <th class="text-end">Potongan</th>
+                        <th class="text-end">Gaji Bersih</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+                        <td>{{ emp.nik }}</td>
+                        <td>
+                            {{ emp.name }}
+                        </td>
+                        <td><small>{{ emp.department }}</small></td>
+                        <td><small>{{ emp.section }}</small></td>
+                        <td class="text-center">
+                            {% if emp.is_all_in %}
+                            <span class="badge bg-info text-dark">ALL IN</span>
+                            {% endif %}
+                            {% if emp.is_satpam %}
+                            <span class="badge bg-secondary">SATPAM</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ emp.days_present }}</td>
+                        <td class="text-center">
+                            {% if emp.days_absent > 0 %}
+                            <span class="text-danger fw-bold">{{ emp.days_absent }}</span>
+                            {% else %}
+                            {{ emp.days_absent }}
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if emp.total_ot_hours > 0 %}
+                            <span title="Reguler: {{ '%.1f'|format(emp.total_reg_ot) }}j · Libur: {{ '%.1f'|format(emp.total_hol_ot) }}j">
+                                {{ "%.1f"|format(emp.total_ot_hours) }}
+                            </span>
+                            {% else %}
+                            0
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if emp.late_count > 0 %}
+                            <span class="text-warning fw-bold" title="{{ emp.late_minutes }} menit total">{{ emp.late_count }}x</span>
+                            {% else %}
+                            0
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><small>{{ emp.base_salary | rupiah }}</small></td>
+                        <td class="text-end">
+                            {% if emp.overtime_pay > 0 %}
+                            <small>{{ emp.overtime_pay | rupiah }}</small>
+                            {% else %}
+                            <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold"><small>{{ emp.gross_salary | rupiah }}</small></td>
+                        <td class="text-end"><small>{{ emp.bpjs_total_employee | rupiah }}</small></td>
+                        <td class="text-end">
+                            {% if emp.total_deductions > 0 %}
+                            <small class="text-danger">{{ emp.total_deductions | rupiah }}</small>
+                            {% else %}
+                            <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold text-success"><small>{{ emp.net_salary | rupiah }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr class="fw-bold">
+                        <td colspan="5">TOTAL</td>
+                        <td class="text-center">{{ summary.total_present_days }}</td>
+                        <td class="text-center">{{ summary.total_absent_days }}</td>
+                        <td class="text-center">{{ "%.1f"|format(summary.total_ot_hours) }}</td>
+                        <td class="text-center">{{ summary.total_late_count }}</td>
+                        <td class="text-end">{{ summary.total_base_salary | rupiah }}</td>
+                        <td class="text-end">{{ summary.total_overtime_pay | rupiah }}</td>
+                        <td class="text-end">{{ summary.total_gross | rupiah }}</td>
+                        <td class="text-end">{{ summary.total_bpjs_employee | rupiah }}</td>
+                        <td class="text-end text-danger">{{ summary.total_deductions | rupiah }}</td>
+                        <td class="text-end text-success">{{ summary.total_net | rupiah }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3 text-muted text-center">
+    <small>
+        <i class="bi bi-info-circle"></i>
+        Preview berdasarkan data absensi 1–11 Maret 2026. Gaji pokok dihitung penuh (1 bulan), potongan absen dihitung proporsional.
+        BPJS dihitung penuh bulanan. Lembur dihitung sesuai PP 35/2021.
+        <br>Sabtu &amp; Minggu = tarif lembur hari libur (2x/3x/4x). ALL IN: lembur dihitung setelah 4 jam.
+        Satpam: tidak dihitung lembur.
+    </small>
+</div>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}Finger Lookup — 출퇴근 조회{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-fingerprint"></i> Finger 출퇴근 조회</h2>
+</div>
+
+<!-- Search Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="/finger" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">NIK / 이름 검색</label>
+                <input type="text" name="q" class="form-control" 
+                       placeholder="NIK 또는 이름 입력..." 
+                       value="{{ q or '' }}" autofocus>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold">월 선택</label>
+                <select name="month" class="form-select">
+                    {% for m in months %}
+                    <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold">공장</label>
+                <select name="factory" class="form-select">
+                    <option value="">전체</option>
+                    {% for f in factories %}
+                    <option value="{{ f.id }}" {% if f.id|string == selected_factory %}selected{% endif %}>{{ f.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> 조회
+                </button>
+            </div>
+            {% if employee and records %}
+            <div class="col-md-2">
+                <a href="/finger/print?employee_id={{ employee.id }}&month={{ selected_month }}" 
+                   target="_blank" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-printer"></i> 인쇄
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% if q and employees and not employee %}
+<!-- Multiple results - choose one -->
+<div class="card mb-4">
+    <div class="card-header bg-light fw-bold">
+        <i class="bi bi-people"></i> 검색 결과: {{ employees|length }}명
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>NIK</th>
+                    <th>이름 Nama</th>
+                    <th>부서 Dept</th>
+                    <th>공장</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td><strong>{{ emp.nik }}</strong></td>
+                    <td>{{ emp.name }}</td>
+                    <td>{{ emp.department }}</td>
+                    <td>{{ emp.factory_code }}</td>
+                    <td>
+                        <a href="/finger?q={{ emp.nik }}&month={{ selected_month }}&factory={{ selected_factory or '' }}" 
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> 조회
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if employee and records is not none %}
+<!-- Employee Info Card -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white fw-bold">
+        <i class="bi bi-person-badge"></i> {{ employee.name }} (NIK: {{ employee.nik }})
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-2"><strong>부서:</strong> {{ employee.department }}</div>
+            <div class="col-md-2"><strong>공장:</strong> {{ employee.factory_code }}</div>
+            <div class="col-md-2"><strong>직책:</strong> {{ employee.position or '-' }}</div>
+            <div class="col-md-2"><strong>입사일:</strong> {{ employee.join_date }}</div>
+            <div class="col-md-2"><strong>조회월:</strong> {{ selected_month }}</div>
+            <div class="col-md-2">
+                <span class="badge bg-success fs-6">출근 {{ summary.present }}일</span>
+                {% if summary.late > 0 %}<span class="badge bg-warning fs-6">지각 {{ summary.late }}</span>{% endif %}
+                {% if summary.absent > 0 %}<span class="badge bg-danger fs-6">결근 {{ summary.absent }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Table -->
+<div class="card">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-calendar3"></i> {{ selected_month }} 출퇴근 기록</span>
+        <div>
+            <a href="/finger/export?employee_id={{ employee.id }}&month={{ selected_month }}" 
+               class="btn btn-sm btn-success me-2">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </a>
+            <a href="/finger/print?employee_id={{ employee.id }}&month={{ selected_month }}" 
+               target="_blank" class="btn btn-sm btn-outline-dark">
+                <i class="bi bi-printer"></i> 인쇄
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-striped table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="width:40px" class="text-center">No</th>
+                    <th style="width:100px">날짜 Tanggal</th>
+                    <th style="width:50px" class="text-center">요일</th>
+                    <th style="width:80px" class="text-center">출근 Masuk</th>
+                    <th style="width:80px" class="text-center">퇴근 Pulang</th>
+                    <th style="width:80px" class="text-center">상태 Status</th>
+                    <th style="width:60px" class="text-center">OT</th>
+                    <th>비고 Ket</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr class="{% if r.status == 'alpha' %}table-danger{% elif r.status == 'late' %}table-warning{% elif r.is_holiday %}table-secondary{% elif r.status == 'leave' %}table-info{% endif %}">
+                    <td class="text-center">{{ loop.index }}</td>
+                    <td>{{ r.date }}</td>
+                    <td class="text-center">{{ r.day_name }}</td>
+                    <td class="text-center">{{ r.clock_in or '-' }}</td>
+                    <td class="text-center">{{ r.clock_out or '-' }}</td>
+                    <td class="text-center">
+                        {% if r.is_holiday %}
+                            <span class="badge bg-secondary">Libur</span>
+                        {% elif r.status == 'present' %}
+                            <span class="badge bg-success">Hadir</span>
+                        {% elif r.status == 'late' %}
+                            <span class="badge bg-warning text-dark">Telat</span>
+                        {% elif r.status == 'alpha' %}
+                            <span class="badge bg-danger">Alpha</span>
+                        {% elif r.status == 'leave' %}
+                            <span class="badge bg-info">{{ r.leave_code or 'Cuti' }}</span>
+                        {% elif r.status == 'sid' %}
+                            <span class="badge bg-primary">SID</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">{{ r.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ '%.1f'|format(r.overtime_hours) if r.overtime_hours else '-' }}</td>
+                    <td>{{ r.notes or r.leave_note or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer">
+        <div class="row text-center">
+            <div class="col"><strong>출근 Hadir:</strong> {{ summary.present }}일</div>
+            <div class="col"><strong>지각 Telat:</strong> {{ summary.late }}일</div>
+            <div class="col"><strong>결근 Alpha:</strong> {{ summary.absent }}일</div>
+            <div class="col"><strong>휴가 Cuti:</strong> {{ summary.leave }}일</div>
+            <div class="col"><strong>SID:</strong> {{ summary.sid }}일</div>
+            <div class="col"><strong>OT 합계:</strong> {{ '%.1f'|format(summary.total_ot) }}시간</div>
+        </div>
+    </div>
+</div>
+{% elif q and not employees %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> "{{ q }}" 검색 결과가 없습니다.
+</div>
+{% endif %}
+{% endblock %}

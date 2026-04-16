@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>출퇴근 기록 — {{ employee.name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; padding: 15mm; }
+        
+        .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .header h2 { font-size: 16px; margin-bottom: 3px; }
+        .header h3 { font-size: 13px; color: #555; }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 15px; font-size: 11px; }
+        .info-grid .item { display: flex; gap: 5px; }
+        .info-grid .label { font-weight: bold; min-width: 80px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        th, td { border: 1px solid #999; padding: 4px 6px; }
+        th { background: #e8e8e8; font-weight: bold; text-align: center; }
+        td.center { text-align: center; }
+        
+        tr.holiday { background: #f0f0f0; color: #888; }
+        tr.alpha { background: #ffe0e0; }
+        tr.late { background: #fff8e0; }
+        tr.leave { background: #e0f0ff; }
+        
+        .summary { margin-top: 12px; display: flex; gap: 20px; font-size: 11px; }
+        .summary .item { }
+        .summary .item strong { }
+        
+        .footer { margin-top: 30px; display: flex; justify-content: space-between; }
+        .footer .sign { text-align: center; width: 200px; }
+        .footer .sign .line { border-bottom: 1px solid #333; height: 50px; margin-bottom: 5px; }
+        
+        @media print {
+            body { padding: 10mm; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center; margin-bottom:15px;">
+        <button onclick="window.print()" style="padding:8px 30px; font-size:14px; cursor:pointer; background:#4361ee; color:white; border:none; border-radius:5px;">
+            🖨️ 인쇄 / Print
+        </button>
+        <button onclick="window.close()" style="padding:8px 20px; font-size:14px; cursor:pointer; margin-left:10px;">닫기</button>
+    </div>
+
+    <div class="header">
+        <h2>PT. KOMITRANDO EMPORIO</h2>
+        <h3>Laporan Absensi Karyawan / 출퇴근 기록부</h3>
+    </div>
+
+    <div class="info-grid">
+        <div class="item"><span class="label">NIK:</span> {{ employee.nik }}</div>
+        <div class="item"><span class="label">Dept:</span> {{ employee.department }}</div>
+        <div class="item"><span class="label">Nama:</span> {{ employee.name }}</div>
+        <div class="item"><span class="label">Factory:</span> {{ employee.factory_code }}</div>
+        <div class="item"><span class="label">Jabatan:</span> {{ employee.position or '-' }}</div>
+        <div class="item"><span class="label">Periode:</span> {{ month }}</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:30px">No</th>
+                <th style="width:85px">Tanggal</th>
+                <th style="width:35px">Hari</th>
+                <th style="width:55px">Masuk</th>
+                <th style="width:55px">Pulang</th>
+                <th style="width:65px">Status</th>
+                <th style="width:40px">OT</th>
+                <th>Keterangan</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr class="{% if r.is_holiday %}holiday{% elif r.status == 'alpha' %}alpha{% elif r.status == 'late' %}late{% elif r.status == 'leave' %}leave{% endif %}">
+                <td class="center">{{ loop.index }}</td>
+                <td>{{ r.date }}</td>
+                <td class="center">{{ r.day_name }}</td>
+                <td class="center">{{ r.clock_in or '-' }}</td>
+                <td class="center">{{ r.clock_out or '-' }}</td>
+                <td class="center">
+                    {% if r.is_holiday %}Libur
+                    {% elif r.status == 'present' %}Hadir
+                    {% elif r.status == 'late' %}Telat
+                    {% elif r.status == 'alpha' %}Alpha
+                    {% elif r.status == 'leave' %}{{ r.leave_code or 'Cuti' }}
+                    {% elif r.status == 'sid' %}SID
+                    {% else %}{{ r.status }}{% endif %}
+                </td>
+                <td class="center">{{ '%.1f'|format(r.overtime_hours) if r.overtime_hours else '' }}</td>
+                <td>{{ r.notes or r.leave_note or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <div class="item"><strong>Hadir:</strong> {{ summary.present }} hari</div>
+        <div class="item"><strong>Telat:</strong> {{ summary.late }} hari</div>
+        <div class="item"><strong>Alpha:</strong> {{ summary.absent }} hari</div>
+        <div class="item"><strong>Cuti:</strong> {{ summary.leave }} hari</div>
+        <div class="item"><strong>SID:</strong> {{ summary.sid }} hari</div>
+        <div class="item"><strong>Total OT:</strong> {{ '%.1f'|format(summary.total_ot) }} jam</div>
+    </div>
+
+    <div class="footer">
+        <div class="sign">
+            <div class="line"></div>
+            <div>Karyawan</div>
+        </div>
+        <div class="sign">
+            <div class="line"></div>
+            <div>HRD</div>
+        </div>
+        <div class="sign">
+            <div class="line"></div>
+            <div>Management</div>
+        </div>
+    </div>
+</body>
+</html>

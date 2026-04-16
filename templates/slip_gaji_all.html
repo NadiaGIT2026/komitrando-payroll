@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slip Gaji Semua - {{ period }}</title>
+    <style>
+        @page { size: A4; margin: 10mm; }
+        body { font-family: Arial, sans-serif; font-size: 11px; margin: 0; padding: 10px; }
+        .slip { 
+            page-break-inside: avoid;
+            border: 1px solid #333; 
+            padding: 12px; 
+            margin-bottom: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .slip-header { 
+            text-align: center; 
+            background: #222; 
+            color: white; 
+            padding: 6px; 
+            margin: -12px -12px 10px -12px;
+        }
+        .slip-header h3 { margin: 0; font-size: 14px; }
+        .slip-header small { font-size: 11px; }
+        .info-row { display: flex; gap: 15px; margin-bottom: 6px; }
+        .info-item { flex: 1; }
+        .info-item small { color: #666; font-size: 9px; }
+        .info-item strong { font-size: 11px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        td, th { padding: 2px 4px; font-size: 10px; }
+        .text-end { text-align: right; }
+        .section-title { font-weight: bold; font-size: 11px; margin: 6px 0 3px 0; padding: 2px 4px; }
+        .section-income { color: #198754; }
+        .section-ot { color: #0d6efd; }
+        .section-bpjs { color: #0dcaf0; }
+        .section-deduction { color: #dc3545; }
+        .total-row { font-weight: bold; background: #f0f0f0; }
+        .net-salary { 
+            text-align: center; 
+            background: #0d6efd; 
+            color: white; 
+            padding: 8px; 
+            font-size: 14px; 
+            font-weight: bold;
+            margin-top: 6px;
+        }
+        .no-print { margin-bottom: 15px; }
+        @media print { 
+            .no-print { display: none; }
+            .slip { border: 1px solid #000; }
+        }
+        /* 2 slips per page */
+        .slip:nth-child(even) { page-break-after: always; }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center; padding:10px;">
+        <h2>🧾 Slip Gaji - Periode {{ period }}{% if factory_id %} (Pabrik {{ factory_id }}){% endif %}</h2>
+        <p>Total: {{ records|length }} karyawan</p>
+        <button onclick="window.print()" style="padding:10px 30px; font-size:16px; cursor:pointer; background:#0d6efd; color:white; border:none; border-radius:5px;">
+            🖨️ Cetak Semua
+        </button>
+        <a href="/payroll?period={{ period }}" style="margin-left:10px; padding:10px 20px; font-size:14px; text-decoration:none; color:#666;">← Kembali</a>
+    </div>
+
+    {% for r in records %}
+    <div class="slip">
+        <div class="slip-header">
+            <h3>SLIP GAJI — PT. KOMITRANDO EMPORIO</h3>
+            <small>Periode: {{ r.period }} | {{ r.factory_code or '' }}</small>
+        </div>
+
+        <div class="info-row">
+            <div class="info-item"><small>NIK</small><br><strong>{{ r.nik }}</strong></div>
+            <div class="info-item"><small>Nama</small><br><strong>{{ r.name }}</strong></div>
+            <div class="info-item"><small>Dept / Bagian</small><br><strong>{{ r.department or '-' }} / {{ r.section or '-' }}</strong></div>
+            <div class="info-item"><small>Hari Kerja</small><br><strong>{{ r.work_days }} hari</strong></div>
+        </div>
+        <div class="info-row">
+            <div class="info-item"><small>Jabatan</small><br>{{ r.position or '-' }}</div>
+            <div class="info-item"><small>Bank</small><br>{{ r.bank_name or '-' }} — {{ r.bank_account or '-' }}</div>
+            <div class="info-item"><small>Pembayaran</small><br>{{ r.payment_method or 'TRANSFER' }}</div>
+            <div class="info-item"><small>Tidak Hadir</small><br>{{ r.absent_days or 0 }} hari</div>
+        </div>
+
+        <hr style="margin:6px 0;">
+
+        <!-- Pendapatan -->
+        <div class="section-title section-income">📈 Pendapatan</div>
+        <table>
+            <tr><td>Gaji Pokok</td><td class="text-end">{{ "Rp {:,.0f}".format(r.base_salary or 0) }}</td></tr>
+            {% if r.special_allowance %}<tr><td>Tunjangan Khusus</td><td class="text-end">{{ "Rp {:,.0f}".format(r.special_allowance) }}</td></tr>{% endif %}
+            {% if r.service_bonus %}<tr><td>Masa Kerja</td><td class="text-end">{{ "Rp {:,.0f}".format(r.service_bonus) }}</td></tr>{% endif %}
+            {% if r.attendance_bonus %}<tr><td>Bonus Kehadiran</td><td class="text-end">{{ "Rp {:,.0f}".format(r.attendance_bonus) }}</td></tr>{% endif %}
+            {% if r.transport_allowance %}<tr><td>Tunj. Transport</td><td class="text-end">{{ "Rp {:,.0f}".format(r.transport_allowance) }}</td></tr>{% endif %}
+            {% if r.meal_allowance %}<tr><td>Tunj. Makan</td><td class="text-end">{{ "Rp {:,.0f}".format(r.meal_allowance) }}</td></tr>{% endif %}
+            {% if r.thr %}<tr><td>THR</td><td class="text-end">{{ "Rp {:,.0f}".format(r.thr) }}</td></tr>{% endif %}
+            <tr class="total-row"><td>Total Gaji Kotor</td><td class="text-end">{{ "Rp {:,.0f}".format(r.gross_salary or 0) }}</td></tr>
+        </table>
+
+        {% if r.overtime_pay %}
+        <div class="section-title section-ot">⏰ Lembur</div>
+        <table>
+            {% if r.overtime_l1 or r.overtime_lk1 %}<tr><td>LK1 (Hari Kerja)</td><td class="text-end">{{ r.overtime_l1 or 0 }} jam</td><td class="text-end">{{ "Rp {:,.0f}".format(r.overtime_lk1 or 0) }}</td></tr>{% endif %}
+            {% if r.overtime_ll1 or r.overtime_ll1_amt %}<tr><td>LL1 (Libur)</td><td class="text-end">{{ r.overtime_ll1 or 0 }} jam</td><td class="text-end">{{ "Rp {:,.0f}".format(r.overtime_ll1_amt or 0) }}</td></tr>{% endif %}
+            <tr class="total-row"><td>Total Lembur</td><td class="text-end">{{ r.overtime_total_hours or 0 }} jam</td><td class="text-end">{{ "Rp {:,.0f}".format(r.overtime_pay or 0) }}</td></tr>
+        </table>
+        {% endif %}
+
+        <!-- BPJS -->
+        <div class="section-title section-bpjs">🏥 BPJS</div>
+        <table>
+            <tr><td></td><td class="text-end"><small>Perusahaan</small></td><td class="text-end"><small>Karyawan</small></td></tr>
+            <tr><td>Kesehatan</td><td class="text-end">{{ "Rp {:,.0f}".format(r.bpjs_kes_company or 0) }}</td><td class="text-end">{{ "Rp {:,.0f}".format(r.bpjs_kes_employee or 0) }}</td></tr>
+            <tr><td>Ketenagakerjaan</td><td class="text-end">{{ "Rp {:,.0f}".format((r.bpjs_jht_company or 0) + (r.bpjs_jkk_company or 0) + (r.bpjs_jkm_company or 0) + (r.bpjs_jp_company or 0)) }}</td><td class="text-end">{{ "Rp {:,.0f}".format((r.bpjs_jht_employee or 0) + (r.bpjs_jp_employee or 0)) }}</td></tr>
+            <tr class="total-row"><td>Total BPJS</td><td class="text-end">{{ "Rp {:,.0f}".format(r.bpjs_total_company or 0) }}</td><td class="text-end">{{ "Rp {:,.0f}".format(r.bpjs_total_employee or 0) }}</td></tr>
+        </table>
+
+        <!-- Potongan -->
+        {% if r.total_deductions %}
+        <div class="section-title section-deduction">📉 Potongan</div>
+        <table>
+            {% if r.deduction_absence %}<tr><td>Tidak Masuk</td><td class="text-end">{{ "Rp {:,.0f}".format(r.deduction_absence) }}</td></tr>{% endif %}
+            {% if r.deduction_late %}<tr><td>Terlambat</td><td class="text-end">{{ "Rp {:,.0f}".format(r.deduction_late) }}</td></tr>{% endif %}
+            <tr class="total-row"><td>Total Potongan</td><td class="text-end">{{ "Rp {:,.0f}".format(r.total_deductions or 0) }}</td></tr>
+        </table>
+        {% endif %}
+
+        {% if r.total_additions %}
+        <table>
+            {% if r.pph_allowance %}<tr><td>Tunj. PPH</td><td class="text-end">{{ "Rp {:,.0f}".format(r.pph_allowance) }}</td></tr>{% endif %}
+            {% if r.madome %}<tr><td>Madome</td><td class="text-end">{{ "Rp {:,.0f}".format(r.madome) }}</td></tr>{% endif %}
+        </table>
+        {% endif %}
+
+        <div class="net-salary">
+            GAJI DITERIMA: {{ "Rp {:,.0f}".format(r.net_salary or 0) }}
+        </div>
+    </div>
+    {% endfor %}
+</body>
+</html>

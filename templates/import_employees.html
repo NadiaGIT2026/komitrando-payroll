@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Import Karyawan{% endblock %}
+{% block content %}
+<h2 class="mb-4">📤 Import Data Karyawan</h2>
+
+<div class="card">
+    <div class="card-body">
+        <div class="mb-3">
+            <a href="/employees/template" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-excel"></i> Download Template Excel
+            </a>
+            <span class="text-muted ms-2">← Isi data karyawan di template ini, lalu upload</span>
+        </div>
+        <hr>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label">File Excel / CSV</label>
+                <input type="file" name="file" class="form-control" accept=".csv,.xlsx,.xls" required>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Import</button>
+            <a href="/employees" class="btn btn-outline-secondary ms-2">Batal</a>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-white"><h5 class="mb-0">📋 Kolom yang Diperlukan</h5></div>
+    <div class="card-body">
+        <table class="table table-sm" style="max-width:600px">
+            <thead><tr><th>Kolom</th><th>Wajib?</th><th>Keterangan</th></tr></thead>
+            <tbody>
+                <tr><td><code>nik</code></td><td>✅</td><td>Nomor Induk Karyawan</td></tr>
+                <tr><td><code>name</code> / <code>nama</code></td><td>✅</td><td>Nama lengkap</td></tr>
+                <tr><td><code>factory</code> / <code>pabrik</code></td><td></td><td>F1 atau F2</td></tr>
+                <tr><td><code>department</code></td><td></td><td>Departemen</td></tr>
+                <tr><td><code>position</code></td><td></td><td>Jabatan</td></tr>
+                <tr><td><code>join_date</code></td><td></td><td>YYYY-MM-DD</td></tr>
+                <tr><td><code>base_salary</code> / <code>gaji_pokok</code></td><td></td><td>Gaji pokok (angka)</td></tr>
+                <tr><td><code>transport_allowance</code></td><td></td><td>Tunjangan transport</td></tr>
+                <tr><td><code>meal_allowance</code></td><td></td><td>Tunjangan makan</td></tr>
+                <tr><td><code>ptkp_status</code></td><td></td><td>TK/0, K/1, dll</td></tr>
+                <tr><td><code>bank_name</code></td><td></td><td>Nama bank</td></tr>
+                <tr><td><code>bank_account</code></td><td></td><td>No. rekening</td></tr>
+                <tr><td><code>finger_id</code></td><td></td><td>ID mesin fingerprint</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

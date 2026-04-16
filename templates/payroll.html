@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Penggajian - Payroll System{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>💰 Penggajian</h2>
+    <div class="d-flex gap-2">
+        <a href="/payroll/import-excel" class="btn btn-outline-primary"><i class="bi bi-file-earmark-arrow-up"></i> Import Excel</a>
+        <a href="/payroll/export/{{ period }}" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Export</a>
+        <a href="/payroll/slip-all/{{ period }}{% if selected_factory %}?factory={{ selected_factory }}{% endif %}" class="btn btn-outline-info" target="_blank"><i class="bi bi-printer"></i> Cetak Slip Semua</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="d-flex align-items-center gap-3 flex-wrap">
+            <label class="form-label mb-0">Periode:</label>
+            <input type="month" name="period" class="form-control" style="width:200px" value="{{ period }}">
+            {% if factories %}
+            <select name="factory" class="form-select" style="width:200px">
+                <option value="">Semua Pabrik</option>
+                {% for f in factories %}
+                <option value="{{ f.id }}" {% if selected_factory == f.id|string %}selected{% endif %}>{{ f.code }} - {{ f.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <input type="text" name="search" class="form-control" style="width:250px" placeholder="🔍 Cari nama/NIK..." value="{{ search or '' }}">
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </form>
+        <hr>
+        <form method="POST" action="/payroll/run" class="d-flex align-items-center gap-3">
+            <input type="hidden" name="period" value="{{ period }}">
+            <input type="hidden" name="factory" value="{{ selected_factory or '' }}">
+            <div class="form-check">
+                <input type="checkbox" name="include_thr" class="form-check-input" id="thr">
+                <label class="form-check-label" for="thr">Termasuk THR</label>
+            </div>
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Jalankan payroll untuk {{ period }}?')">
+                <i class="bi bi-play-fill"></i> Hitung Payroll
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if summary and summary.total_employees > 0 %}
+<div class="row g-3 mb-4">
+    <div class="col-md-2">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="font-size:1.4em">{{ summary.total_employees }}</div>
+            <div class="stat-label">Karyawan</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="font-size:1em">{{ summary.total_gross | rupiah }}</div>
+            <div class="stat-label">Gaji Kotor</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="font-size:1em">{{ summary.total_overtime | rupiah }}</div>
+            <div class="stat-label">Total Lembur</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="font-size:1em; color:#dc3545">{{ summary.total_deductions | rupiah }}</div>
+            <div class="stat-label">Potongan</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card text-center">
+            <div class="stat-value" style="font-size:1em; color:#198754">{{ summary.total_net | rupiah }}</div>
+            <div class="stat-label">Gaji Bersih</div>
+        </div>
+    </div>
+</div>
+
+<!-- BPJS Summary -->
+<div class="card mb-4">
+    <div class="card-header"><strong>🏥 BPJS Summary</strong></div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0" style="font-size:0.9em">
+            <thead class="table-light">
+                <tr>
+                    <th></th>
+                    <th class="text-end">Kesehatan</th>
+                    <th class="text-end">Ketenagakerjaan</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Perusahaan</strong></td>
+                    <td class="text-end">{{ summary.bpjs_kes_company | rupiah }}</td>
+                    <td class="text-end">{{ summary.bpjs_tk_company | rupiah }}</td>
+                    <td class="text-end"><strong>{{ summary.total_company_bpjs | rupiah }}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Karyawan</strong></td>
+                    <td class="text-end">{{ summary.bpjs_kes_employee | rupiah }}</td>
+                    <td class="text-end">{{ summary.bpjs_tk_employee | rupiah }}</td>
+                    <td class="text-end"><strong>{{ summary.total_employee_bpjs | rupiah }}</strong></td>
+                </tr>
+                <tr class="table-light">
+                    <td><strong>Total</strong></td>
+                    <td class="text-end"><strong>{{ (summary.bpjs_kes_company + summary.bpjs_kes_employee) | rupiah }}</strong></td>
+                    <td class="text-end"><strong>{{ (summary.bpjs_tk_company + summary.bpjs_tk_employee) | rupiah }}</strong></td>
+                    <td class="text-end"><strong>{{ (summary.total_company_bpjs + summary.total_employee_bpjs) | rupiah }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-hover mb-0" style="font-size:0.85em">
+            <thead>
+                <tr>
+                    <th>NIK</th>
+                    <th>Nama</th>
+                    <th>Dept</th>
+                    <th>Bagian</th>
+                    <th class="text-end">Hari Kerja</th>
+                    <th class="text-end">Gaji Pokok</th>
+                    <th class="text-end">Lembur</th>
+                    <th class="text-end">Gaji Kotor</th>
+                    <th class="text-end">BPJS Kary.</th>
+                    <th class="text-end">Potongan</th>
+                    <th class="text-end">Gaji Bersih</th>
+                    <th>Bayar</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.nik }}</td>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td><span class="badge bg-{{ 'primary' if r.department == 'OFFICE' else 'secondary' }}">{{ r.department }}</span></td>
+                    <td>{{ r.section or '-' }}</td>
+                    <td class="text-end">{{ r.work_days }}</td>
+                    <td class="text-end">{{ r.base_salary | rupiah }}</td>
+                    <td class="text-end">{{ r.overtime_pay | rupiah }}</td>
+                    <td class="text-end">{{ r.gross_salary | rupiah }}</td>
+                    <td class="text-end text-muted">{{ r.bpjs_total_employee | rupiah }}</td>
+                    <td class="text-end text-danger">{{ r.total_deductions | rupiah }}</td>
+                    <td class="text-end"><strong class="text-success">{{ r.net_salary | rupiah }}</strong></td>
+                    <td><span class="badge bg-{{ 'success' if r.payment_method == 'TRANSFER' else 'warning' }}">{{ r.payment_method or 'TRANSFER' }}</span></td>
+                    <td><a href="/payroll/slip/{{ r.id }}" class="btn btn-sm btn-outline-info"><i class="bi bi-receipt"></i></a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="13" class="text-center text-muted py-4">Belum ada data payroll. Import dari Excel atau klik "Hitung Payroll".</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

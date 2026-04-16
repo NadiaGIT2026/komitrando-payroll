@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Karyawan - Payroll System{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>👥 Data Karyawan</h2>
+    <div class="d-flex gap-2">
+        <a href="/employees/import" class="btn btn-outline-success"><i class="bi bi-upload"></i> Import Excel</a>
+        <a href="/employees/add" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Tambah Karyawan</a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" class="d-flex align-items-center gap-3">
+            <label class="form-label mb-0">Pabrik:</label>
+            <select name="factory" class="form-select" style="width:200px" onchange="this.form.submit()">
+                <option value="">Semua Pabrik</option>
+                {% for f in factories %}
+                <option value="{{ f.id }}" {% if selected_factory == f.id|string %}selected{% endif %}>{{ f.code }} - {{ f.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>NIK</th>
+                    <th>Nama</th>
+                    <th>Pabrik</th>
+                    <th>Departemen</th>
+                    <th>Jabatan</th>
+                    <th>Gaji Pokok</th>
+                    <th>Finger ID</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in employees %}
+                <tr>
+                    <td>{{ e.nik }}</td>
+                    <td><strong>{{ e.name }}</strong></td>
+                    <td><span class="badge bg-info">{{ e.factory_code or 'F1' }}</span></td>
+                    <td>{{ e.department }}</td>
+                    <td>{{ e.position }}</td>
+                    <td>{{ e.base_salary | rupiah }}</td>
+                    <td>{{ e.finger_id }}</td>
+                    <td>
+                        {% if e.is_active %}
+                        <span class="badge bg-success">Aktif</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Non-aktif</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/employees/{{ e.id }}/edit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">Belum ada data karyawan</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

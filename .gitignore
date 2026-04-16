@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+data/uploads/
+data/*.bak
+data/payroll_backup_*
+logs/
+exports/
+*.db
+.DS_Store

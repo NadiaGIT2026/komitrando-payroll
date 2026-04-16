@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if employee else 'Tambah' }} Karyawan{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ '✏️ Edit' if employee else '➕ Tambah' }} Karyawan</h2>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">NIK <span class="text-danger">*</span></label>
+                    <input type="text" name="nik" class="form-control" required value="{{ employee.nik if employee else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control" required value="{{ employee.name if employee else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Pabrik <span class="text-danger">*</span></label>
+                    <select name="factory_id" class="form-select">
+                        {% for f in factories %}
+                        <option value="{{ f.id }}" {% if employee and employee.factory_id == f.id %}selected{% endif %}>{{ f.code }} - {{ f.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Departemen</label>
+                    <input type="text" name="department" class="form-control" value="{{ employee.department if employee else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Jabatan</label>
+                    <input type="text" name="position" class="form-control" value="{{ employee.position if employee else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tanggal Masuk <span class="text-danger">*</span></label>
+                    <input type="date" name="join_date" class="form-control" required value="{{ employee.join_date if employee else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Finger ID</label>
+                    <input type="text" name="finger_id" class="form-control" value="{{ employee.finger_id if employee else '' }}" placeholder="ID di mesin fingerprint">
+                </div>
+                
+                <hr>
+                <h5>💰 Gaji & Tunjangan</h5>
+                
+                <div class="col-md-4">
+                    <label class="form-label">Gaji Pokok <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text">Rp</span>
+                        <input type="number" name="base_salary" class="form-control" required value="{{ employee.base_salary|int if employee else '' }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tunjangan Transport</label>
+                    <div class="input-group">
+                        <span class="input-group-text">Rp</span>
+                        <input type="number" name="transport_allowance" class="form-control" value="{{ employee.transport_allowance|int if employee else '0' }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tunjangan Makan</label>
+                    <div class="input-group">
+                        <span class="input-group-text">Rp</span>
+                        <input type="number" name="meal_allowance" class="form-control" value="{{ employee.meal_allowance|int if employee else '0' }}">
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label">Status PTKP</label>
+                    <select name="ptkp_status" class="form-select">
+                        {% for opt in ptkp_options %}
+                        <option value="{{ opt }}" {% if employee and employee.ptkp_status == opt %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <hr>
+                <h5>🏦 Rekening Bank</h5>
+                
+                <div class="col-md-6">
+                    <label class="form-label">Nama Bank</label>
+                    <input type="text" name="bank_name" class="form-control" value="{{ employee.bank_name if employee else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">No. Rekening</label>
+                    <input type="text" name="bank_account" class="form-control" value="{{ employee.bank_account if employee else '' }}">
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Simpan</button>
+                <a href="/employees" class="btn btn-outline-secondary ms-2">Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

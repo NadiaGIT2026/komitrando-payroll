@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Slip Gaji - {{ record.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>🧾 Slip Gaji</h2>
+    <div class="d-flex gap-2">
+        <a href="/payroll?period={{ record.period }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+        <button onclick="window.print()" class="btn btn-outline-primary"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+<div class="card" style="max-width:800px; margin:auto;">
+    <div class="card-header bg-dark text-white text-center">
+        <h4 class="mb-0">SLIP GAJI</h4>
+        <small>Periode: {{ record.period }}</small>
+    </div>
+    <div class="card-body">
+        <!-- Employee Info -->
+        <div class="row mb-3">
+            <div class="col-4">
+                <small class="text-muted">NIK</small><br><strong>{{ record.nik }}</strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted">Nama</small><br><strong>{{ record.name }}</strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted">Departemen / Bagian</small><br>{{ record.department or '-' }} / {{ record.section or '-' }}
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-3">
+                <small class="text-muted">Hari Kerja</small><br><strong>{{ record.work_days }}</strong> hari
+            </div>
+            <div class="col-3">
+                <small class="text-muted">Tidak Hadir</small><br>{{ record.absent_days or 0 }} hari
+            </div>
+            <div class="col-3">
+                <small class="text-muted">Total Jam Kerja</small><br>{{ record.total_work_hours or 0 }} jam
+            </div>
+            <div class="col-3">
+                <small class="text-muted">Pembayaran</small><br>
+                <span class="badge bg-{{ 'success' if record.payment_method == 'TRANSFER' else 'warning' }}">{{ record.payment_method or 'TRANSFER' }}</span>
+            </div>
+        </div>
+        {% if record.bank_account %}
+        <div class="row mb-3">
+            <div class="col-6">
+                <small class="text-muted">Bank</small><br>{{ record.bank_name or '-' }} — {{ record.bank_account }}
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Jadwal Kerja</small><br>{{ record.work_schedule or '-' }}
+            </div>
+        </div>
+        {% endif %}
+
+        <hr>
+
+        <!-- PENDAPATAN -->
+        <h6 class="text-success"><i class="bi bi-graph-up-arrow"></i> Pendapatan</h6>
+        <table class="table table-sm">
+            <tr><td>Gaji Pokok</td><td class="text-end">{{ record.base_salary | rupiah }}</td></tr>
+            {% if record.special_allowance %}
+            <tr><td>Tunjangan Khusus</td><td class="text-end">{{ record.special_allowance | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.service_bonus %}
+            <tr><td>Masa Kerja</td><td class="text-end">{{ record.service_bonus | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.attendance_bonus %}
+            <tr><td>Bonus Kehadiran</td><td class="text-end">{{ record.attendance_bonus | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.transport_allowance %}
+            <tr><td>Tunjangan Transport</td><td class="text-end">{{ record.transport_allowance | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.meal_allowance %}
+            <tr><td>Tunjangan Makan</td><td class="text-end">{{ record.meal_allowance | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.thr %}
+            <tr><td>THR</td><td class="text-end">{{ record.thr | rupiah }}</td></tr>
+            {% endif %}
+            <tr class="table-success fw-bold"><td>Total Gaji Kotor</td><td class="text-end">{{ record.gross_salary | rupiah }}</td></tr>
+        </table>
+
+        <!-- LEMBUR -->
+        {% if record.overtime_pay %}
+        <h6 class="text-primary"><i class="bi bi-clock-fill"></i> Lembur</h6>
+        <table class="table table-sm" style="font-size:0.9em">
+            <thead class="table-light">
+                <tr><th>Jenis</th><th class="text-end">Jam</th><th class="text-end">Jumlah (Rp)</th></tr>
+            </thead>
+            <tbody>
+                {% if record.overtime_l1 or record.overtime_lk1 %}
+                <tr><td>LK1 (Hari Kerja Jam 1)</td><td class="text-end">{{ record.overtime_l1 or 0 }}</td><td class="text-end">{{ record.overtime_lk1 | rupiah }}</td></tr>
+                {% endif %}
+                {% if record.overtime_l2 or record.overtime_lk2 %}
+                <tr><td>LK2 (Hari Kerja Jam 2+)</td><td class="text-end">{{ record.overtime_l2 or 0 }}</td><td class="text-end">{{ record.overtime_lk2 | rupiah }}</td></tr>
+                {% endif %}
+                {% if record.overtime_ll1 or record.overtime_ll1_amt %}
+                <tr><td>LL1 (Libur Jam 1-8)</td><td class="text-end">{{ record.overtime_ll1 or 0 }}</td><td class="text-end">{{ record.overtime_ll1_amt | rupiah }}</td></tr>
+                {% endif %}
+                {% if record.overtime_ll2 or record.overtime_ll2_amt %}
+                <tr><td>LL2 (Libur Jam 9)</td><td class="text-end">{{ record.overtime_ll2 or 0 }}</td><td class="text-end">{{ record.overtime_ll2_amt | rupiah }}</td></tr>
+                {% endif %}
+                {% if record.overtime_ll3 or record.overtime_ll3_amt %}
+                <tr><td>LL3 (Libur Jam 10+)</td><td class="text-end">{{ record.overtime_ll3 or 0 }}</td><td class="text-end">{{ record.overtime_ll3_amt | rupiah }}</td></tr>
+                {% endif %}
+                <tr class="table-primary fw-bold"><td>Total Lembur</td><td class="text-end">{{ record.overtime_total_hours or 0 }} jam</td><td class="text-end">{{ record.overtime_pay | rupiah }}</td></tr>
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- BPJS -->
+        <h6 class="text-info"><i class="bi bi-shield-check"></i> BPJS</h6>
+        <table class="table table-sm" style="font-size:0.85em">
+            <thead class="table-light">
+                <tr><th>Jenis</th><th class="text-end">Perusahaan</th><th class="text-end">Karyawan</th><th class="text-end">Total</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>BPJS Kesehatan</td>
+                    <td class="text-end">{{ record.bpjs_kes_company | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_kes_employee | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_kes_total | rupiah }}</td>
+                </tr>
+                <tr>
+                    <td>BPJS JHT</td>
+                    <td class="text-end">{{ record.bpjs_jht_company | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jht_employee | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jht_total | rupiah }}</td>
+                </tr>
+                <tr>
+                    <td>BPJS JKK</td>
+                    <td class="text-end">{{ record.bpjs_jkk_company | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jkk_employee | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jkk_total | rupiah }}</td>
+                </tr>
+                <tr>
+                    <td>BPJS JKM</td>
+                    <td class="text-end">{{ record.bpjs_jkm_company | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jkm_employee | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jkm_total | rupiah }}</td>
+                </tr>
+                <tr>
+                    <td>BPJS JP</td>
+                    <td class="text-end">{{ record.bpjs_jp_company | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jp_employee | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_jp_total | rupiah }}</td>
+                </tr>
+                <tr class="table-info fw-bold">
+                    <td>TOTAL BPJS</td>
+                    <td class="text-end">{{ record.bpjs_total_company | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_total_employee | rupiah }}</td>
+                    <td class="text-end">{{ record.bpjs_total_total | rupiah }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- POTONGAN -->
+        <h6 class="text-danger"><i class="bi bi-graph-down-arrow"></i> Potongan</h6>
+        <table class="table table-sm">
+            {% if record.deduction_absence %}
+            <tr><td>Tidak Masuk / Alpha</td><td class="text-end">{{ record.deduction_absence | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.deduction_late %}
+            <tr><td>Terlambat</td><td class="text-end">{{ record.deduction_late | rupiah }}</td></tr>
+            {% endif %}
+            <tr class="table-danger fw-bold"><td>Total Potongan Absensi</td><td class="text-end">{{ record.total_deductions | rupiah }}</td></tr>
+        </table>
+
+        <!-- MANUAL ADDITIONS -->
+        {% if record.total_additions %}
+        <h6 class="text-success"><i class="bi bi-plus-circle"></i> Penambah Manual</h6>
+        <table class="table table-sm">
+            {% if record.pph_allowance %}
+            <tr><td>Tunjangan PPH</td><td class="text-end">{{ record.pph_allowance | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.madome %}
+            <tr><td>Madome</td><td class="text-end">{{ record.madome | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.correction_underpay %}
+            <tr><td>Koreksi Kurang Bayar</td><td class="text-end">{{ record.correction_underpay | rupiah }}</td></tr>
+            {% endif %}
+            <tr class="table-success fw-bold"><td>Total Penambah</td><td class="text-end">{{ record.total_additions | rupiah }}</td></tr>
+        </table>
+        {% endif %}
+
+        <!-- MANUAL DEDUCTIONS -->
+        {% if record.total_manual_deductions %}
+        <h6 class="text-danger"><i class="bi bi-dash-circle"></i> Pengurang Manual</h6>
+        <table class="table table-sm">
+            {% if record.pph21 %}
+            <tr><td>PPH</td><td class="text-end">{{ record.pph21 | rupiah }}</td></tr>
+            {% endif %}
+            {% if record.correction_salary %}
+            <tr><td>Koreksi Gaji</td><td class="text-end">{{ record.correction_salary | rupiah }}</td></tr>
+            {% endif %}
+            <tr class="table-danger fw-bold"><td>Total Pengurang</td><td class="text-end">{{ record.total_manual_deductions | rupiah }}</td></tr>
+        </table>
+        {% endif %}
+
+        <!-- NET SALARY -->
+        <div class="bg-primary text-white p-3 rounded text-center mt-3">
+            <h4 class="mb-0">GAJI DITERIMA: {{ record.net_salary | rupiah }}</h4>
+        </div>
+    </div>
+</div>
+{% endblock %}

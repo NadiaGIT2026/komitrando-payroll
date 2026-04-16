@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Import Payroll Excel - Payroll System{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>📥 Import Payroll dari Excel Pabrik</h2>
+    <a href="/payroll" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+</div>
+
+<div class="card" style="max-width: 700px;">
+    <div class="card-body">
+        <div class="alert alert-info">
+            <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Format yang Didukung</h6>
+            <p class="mb-1">File Excel dari sistem penggajian pabrik (format PT. KOMITRANDO EMPORIO).</p>
+            <small>
+                • Sheet pertama akan dibaca otomatis<br>
+                • Header di baris 16, data mulai baris 17<br>
+                • Kolom: NIK, Nama, Departemen, Bagian, Gaji, Lembur, BPJS, Potongan, dll<br>
+                • Hanya karyawan dengan status "Aktif = Ya" yang diimport
+            </small>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Periode Gaji</label>
+                <input type="month" name="period" class="form-control" required 
+                       value="{{ request.args.get('period', '') }}">
+                <small class="text-muted">Pilih bulan & tahun untuk data payroll ini</small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Pabrik</label>
+                <select name="factory_id" class="form-select">
+                    {% for f in factories %}
+                    <option value="{{ f.id }}">{{ f.code }} - {{ f.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label fw-bold">File Excel (.xlsx)</label>
+                <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+            </div>
+            
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Perhatian:</strong> Import akan menimpa data payroll yang sudah ada untuk periode yang sama.
+                Karyawan baru akan otomatis dibuat jika NIK belum terdaftar.
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg w-100" 
+                    onclick="return confirm('Import data payroll? Data periode yang sama akan ditimpa.')">
+                <i class="bi bi-upload"></i> Import Payroll
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

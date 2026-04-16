@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Cuti (연차) Management{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>📅 Cuti (연차) Management</h2>
+    <div class="d-flex gap-2">
+        <form method="GET" class="d-flex gap-2">
+            <select name="year" class="form-select" style="width:120px" onchange="this.form.submit()">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <select name="factory" class="form-select" style="width:150px" onchange="this.form.submit()">
+                <option value="">Semua Pabrik</option>
+                {% for f in factories %}
+                <option value="{{ f.id }}" {% if selected_factory == f.id|string %}selected{% endif %}>{{ f.code }} - {{ f.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="search" value="{{ search }}" class="form-control" placeholder="Cari NIK/Nama..." style="width:200px">
+            <button class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+        </form>
+        <form method="POST" action="/leave/init">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <button class="btn btn-success" onclick="return confirm('Initialize Cuti {{ selected_year }} untuk semua karyawan?')">
+                <i class="bi bi-arrow-repeat"></i> Init {{ selected_year }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ summary.total }}</div>
+            <div class="stat-label">Total Karyawan</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-success">{{ summary.eligible }}</div>
+            <div class="stat-label">Hak Cuti (≥1 tahun)</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-warning">{{ summary.not_eligible }}</div>
+            <div class="stat-label">Belum Hak (&lt;1 tahun)</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-info">{{ summary.cb_days }}</div>
+            <div class="stat-label">Cuti Bersama {{ selected_year }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Negative Balance Alert -->
+{% if negative_balance %}
+<div class="alert alert-warning">
+    <strong>⚠️ {{ negative_balance|length }}명 마이너스 잔여!</strong>
+    1년 미만 직원 중 Cuti Bersama 사용으로 마이너스 발생 → 다음해 연차에서 차감됩니다.
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>NIK</th>
+                        <th>Nama</th>
+                        <th>Pabrik</th>
+                        <th>Masuk</th>
+                        <th>Masa Kerja</th>
+                        <th class="text-center">Jatah</th>
+                        <th class="text-center">CB 차감</th>
+                        <th class="text-center">이월 차감</th>
+                        <th class="text-center">사용</th>
+                        <th class="text-center">잔여</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td><code>{{ r.nik }}</code></td>
+                        <td>{{ r.name }}</td>
+                        <td><span class="badge bg-secondary">{{ r.factory_code }}</span></td>
+                        <td>{{ r.join_date }}</td>
+                        <td>
+                            {% set years_svc = ((selected_year * 365.25 - (r.join_date|replace('-','')|int if r.join_date else 0)) / 365.25)|round(1) %}
+                            {% if r.annual_quota > 0 %}
+                                <span class="text-success">≥ 1 tahun</span>
+                            {% else %}
+                                <span class="text-warning">&lt; 1 tahun</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center"><strong>{{ r.annual_quota }}</strong></td>
+                        <td class="text-center">
+                            {% if r.cb_deduction > 0 %}
+                                <span class="text-danger">-{{ r.cb_deduction }}</span>
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if r.carry_over_deduction > 0 %}
+                                <span class="text-danger">-{{ r.carry_over_deduction }}</span>
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ r.used }}</td>
+                        <td class="text-center">
+                            {% if r.remaining < 0 %}
+                                <span class="badge bg-danger">{{ r.remaining }}</span>
+                            {% elif r.remaining <= 2 %}
+                                <span class="badge bg-warning text-dark">{{ r.remaining }}</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ r.remaining }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/leave/{{ r.employee_id }}?year={{ selected_year }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not records %}
+                    <tr>
+                        <td colspan="11" class="text-center text-muted py-4">
+                            데이터 없음 — "Init {{ selected_year }}" 버튼을 눌러 초기화하세요.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3 text-muted small">
+    <strong>규칙:</strong> 연차 12개/년 (1년 이상 근무) · Cuti Bersama는 자동 차감 · 
+    1년 미만 직원의 CB 사용분은 다음해 연차에서 차감
+</div>
+{% endblock %}

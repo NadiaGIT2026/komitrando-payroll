@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Payroll System{% endblock %}
+{% block content %}
+<h2 class="mb-4">📊 Dashboard</h2>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_employees }}</div>
+            <div class="stat-label"><i class="bi bi-people"></i> Karyawan Aktif</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ payroll_done }}</div>
+            <div class="stat-label"><i class="bi bi-check-circle"></i> Payroll {{ current_period }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" style="font-size:1.3em">{{ total_gross | rupiah }}</div>
+            <div class="stat-label"><i class="bi bi-cash-coin"></i> Total Gaji Kotor</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value" style="font-size:1.3em; color:#198754">{{ total_payroll | rupiah }}</div>
+            <div class="stat-label"><i class="bi bi-cash"></i> Total Gaji Bersih</div>
+        </div>
+    </div>
+</div>
+
+{% if total_overtime %}
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-value" style="font-size:1.2em; color: var(--primary)">{{ total_overtime | rupiah }}</div>
+            <div class="stat-label"><i class="bi bi-clock"></i> Total Lembur Bulan Ini</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white"><h5 class="mb-0">📋 Quick Actions</h5></div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/payroll/import-excel" class="btn btn-primary btn-lg">
+                        <i class="bi bi-file-earmark-arrow-up"></i> Import Payroll dari Excel
+                    </a>
+                    <a href="/payroll" class="btn btn-outline-primary">
+                        <i class="bi bi-cash-stack"></i> Lihat Payroll
+                    </a>
+                    <a href="/employees" class="btn btn-outline-secondary">
+                        <i class="bi bi-people"></i> Kelola Karyawan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white"><h5 class="mb-0">🏭 Per Pabrik</h5></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Pabrik</th><th class="text-end">Karyawan</th></tr></thead>
+                    <tbody>
+                        {% for fs in factory_stats %}
+                        <tr><td>{{ fs.code }} — {{ fs.name }}</td><td class="text-end">{{ fs.emp_count }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white"><h5 class="mb-0">Payroll Terakhir</h5></div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>NIK</th>
+                    <th>Nama</th>
+                    <th>Periode</th>
+                    <th class="text-end">Gaji Kotor</th>
+                    <th class="text-end">Lembur</th>
+                    <th class="text-end">Gaji Bersih</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in recent_payrolls %}
+                <tr>
+                    <td>{{ p.nik }}</td>
+                    <td><strong>{{ p.name }}</strong></td>
+                    <td>{{ p.period }}</td>
+                    <td class="text-end">{{ p.gross_salary | rupiah }}</td>
+                    <td class="text-end">{{ p.overtime_pay | rupiah }}</td>
+                    <td class="text-end"><strong class="text-success">{{ p.net_salary | rupiah }}</strong></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Belum ada data payroll</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

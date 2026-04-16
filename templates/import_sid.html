@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Import SID (Status Ijin/Dispensasi){% endblock %}
+{% block content %}
+<h2 class="mb-4">📋 Import SID — Status Ijin / Dispensasi</h2>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Periode</label>
+                        <input type="month" name="period" class="form-control" style="max-width:200px"
+                               value="{{ current_period }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">File SID Template (.xlsx)</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                        <div class="form-text">
+                            Upload file SID template yang sudah diisi. 
+                            <a href="/attendance/sid/template?period={{ current_period }}">Download template kosong</a>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Import SID
+                    </button>
+                    <a href="/attendance" class="btn btn-outline-secondary ms-2">Batal</a>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📌 Kode Status</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>Kode</th><th>Status</th><th>설명</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><span class="badge bg-success">H</span></td><td>Hadir</td><td>출근 (자동 — fingerprint)</td></tr>
+                        <tr><td><span class="badge bg-info">I</span></td><td>Ijin</td><td>허가 (사유있는 결근)</td></tr>
+                        <tr><td><span class="badge bg-warning text-dark">S</span></td><td>Sakit</td><td>병가</td></tr>
+                        <tr><td><span class="badge bg-danger">A</span></td><td>Alpha</td><td>무단결근</td></tr>
+                        <tr><td><span class="badge bg-primary">C</span></td><td>Cuti</td><td>연차</td></tr>
+                        <tr><td><span class="badge bg-secondary">CB</span></td><td>Cuti Bersama</td><td>함께쉬기</td></tr>
+                        <tr><td><span class="badge bg-dark">DL</span></td><td>Dinas Luar</td><td>출장</td></tr>
+                        <tr><td><span class="badge bg-primary">CT</span></td><td>Cuti Tahunan</td><td>연차</td></tr>
+                        <tr><td><span class="badge" style="background:#6c757d">OFF</span></td><td>Off</td><td>휴무</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">ℹ️ 사용법</h5>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0 small">
+                    <li>위 링크에서 <strong>template 다운로드</strong></li>
+                    <li>각 직원의 날짜별 칸에 <strong>상태 코드 입력</strong></li>
+                    <li>H(출근)는 입력 안해도 됨 — fingerprint 데이터 사용</li>
+                    <li>빈 칸 = 변경 없음 (기존 데이터 유지)</li>
+                    <li>SID가 fingerprint 출근 기록을 <strong>덮어쓸 수 있음</strong> (ijin 등)</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
