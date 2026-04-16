@@ -167,14 +167,15 @@ def db_fetchall(conn, sql, params=None):
 
 
 def init_db():
-    conn = get_db()
-    
     if USE_POSTGRES:
-        _init_postgres(conn)
+        # Use raw psycopg connection for init (not wrapper)
+        raw_conn = psycopg.connect(DATABASE_URL)
+        _init_postgres(raw_conn)
+        raw_conn.close()
     else:
+        conn = get_db()
         _init_sqlite(conn)
-    
-    conn.close()
+        conn.close()
 
 
 def _init_postgres(conn):
