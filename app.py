@@ -16,7 +16,8 @@ from datetime import datetime, date, timedelta
 app = Flask(__name__)
 app.secret_key = 'payroll-nadia-2026'
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'data', 'uploads')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def format_rupiah(amount):
