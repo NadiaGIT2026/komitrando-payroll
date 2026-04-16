@@ -10,8 +10,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL', '')
 USE_POSTGRES = DATABASE_URL.startswith('postgres')
 
 if USE_POSTGRES:
-    import psycopg2
-    import psycopg2.extras
+    import psycopg
+    from psycopg.rows import dict_row
     # Fix Render's postgres:// → postgresql://
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
@@ -23,7 +23,7 @@ else:
 
 
 class DictRow:
-    """Make psycopg2 rows behave like sqlite3.Row."""
+    """Make psycopg rows behave like sqlite3.Row."""
     def __init__(self, row_dict):
         self._dict = row_dict
     def __getitem__(self, key):
@@ -39,7 +39,7 @@ class DictRow:
 
 
 class PgCursorWrapper:
-    """Wraps psycopg2 cursor to return DictRow objects like sqlite3.Row."""
+    """Wraps psycopg cursor to return DictRow objects like sqlite3.Row."""
     def __init__(self, cursor):
         self._cur = cursor
     def fetchone(self):
@@ -62,7 +62,7 @@ class PgCursorWrapper:
 
 
 class PgConnectionWrapper:
-    """Wraps psycopg2 connection to auto-translate SQLite SQL to PostgreSQL."""
+    """Wraps psycopg connection to auto-translate SQLite SQL to PostgreSQL."""
     def __init__(self, real_conn):
         self._conn = real_conn
     
@@ -86,10 +86,7 @@ class PgConnectionWrapper:
         
         # Handle INSERT OR IGNORE
         if 'OR IGNORE' in original_sql.upper():
-            sql = sql.rstrip(')') if not sql.rstrip().endswith(')') else sql
-            # Add ON CONFLICT DO NOTHING
             if 'ON CONFLICT' not in sql.upper():
-                sql = sql.rstrip() 
                 if sql.rstrip().endswith(')'):
                     sql += ' ON CONFLICT DO NOTHING'
         
@@ -99,7 +96,7 @@ class PgConnectionWrapper:
         elif 'OR REPLACE' in original_sql.upper() and 'payroll' in original_sql.lower():
             sql += ' ON CONFLICT (employee_id, period) DO UPDATE SET net_salary=EXCLUDED.net_salary'
         
-        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur = self._conn.cursor(row_factory=dict_row)
         try:
             cur.execute(sql, params or ())
         except Exception as e:
@@ -108,9 +105,9 @@ class PgConnectionWrapper:
         return PgCursorWrapper(cur)
     
     def executescript(self, sql):
-        """Execute multiple statements (PostgreSQL doesn't have executescript)."""
+        """Execute multiple statements."""
         cur = self._conn.cursor()
-        cur.execute(sql)
+        cur.execute(sql.encode() if isinstance(sql, str) else sql)
         self._conn.commit()
     
     def commit(self):
@@ -125,7 +122,7 @@ class PgConnectionWrapper:
 
 def get_db():
     if USE_POSTGRES:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg.connect(DATABASE_URL)
         return PgConnectionWrapper(conn)
     else:
         conn = sqlite3.connect(DB_PATH)
@@ -138,11 +135,11 @@ def get_db():
 def db_execute(conn, sql, params=None):
     """Execute SQL with compatibility for both SQLite and PostgreSQL."""
     if USE_POSTGRES:
-        # Convert ? placeholders to %s for psycopg2
+        # Convert ? placeholders to %s for psycopg
         sql = sql.replace('?', '%s')
         # Convert SQLite functions
         sql = sql.replace('CURRENT_TIMESTAMP', 'NOW()')
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur = conn.cursor(row_factory=dict_row)
         cur.execute(sql, params or ())
         return cur
     else:
