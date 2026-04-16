@@ -1,6 +1,7 @@
 # app.py — Payroll System Web Application
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
+from functools import wraps
 from models import get_db, init_db
 from payroll_calc import calculate_employee_payroll, run_monthly_payroll, save_payroll
 from preview_calc import calculate_preview
@@ -14,11 +15,50 @@ import os
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
-app.secret_key = 'payroll-nadia-2026'
+app.secret_key = os.environ.get('SECRET_KEY', 'payroll-nadia-2026')
+app.permanent_session_lifetime = timedelta(hours=8)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# ============================================================
+# Authentication
+# ============================================================
+USERS = {
+    'admin': os.environ.get('ADMIN_PASSWORD', 'komi2026!'),
+    'nadia': os.environ.get('NADIA_PASSWORD', 'nadia2026!'),
+    'hrd': os.environ.get('HRD_PASSWORD', 'hrd2026!'),
+}
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip().lower()
+        password = request.form.get('password', '')
+        if username in USERS and USERS[username] == password:
+            session.permanent = True
+            session['user'] = username
+            flash(f'Selamat datang, {username}!', 'success')
+            next_url = request.args.get('next', url_for('dashboard'))
+            return redirect(next_url)
+        else:
+            flash('Username atau password salah!', 'danger')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    flash('Berhasil logout.', 'info')
+    return redirect(url_for('login'))
 
 def format_rupiah(amount):
     """Format number as Rupiah."""
@@ -41,6 +81,7 @@ def get_factories():
 # Dashboard
 # ============================================================
 @app.route('/')
+@login_required
 def dashboard():
     conn = get_db()
     factory_id = request.args.get('factory', '')
@@ -161,6 +202,7 @@ def dashboard():
 # Employees (Karyawan)
 # ============================================================
 @app.route('/employees')
+@login_required
 def employees():
     conn = get_db()
     factory_id = request.args.get('factory', '')
@@ -189,6 +231,7 @@ def employees():
                          factories=get_factories(), selected_factory=factory_id, search=search)
 
 @app.route('/employees/add', methods=['GET', 'POST'])
+@login_required
 def add_employee():
     if request.method == 'POST':
         conn = get_db()
@@ -223,6 +266,7 @@ def add_employee():
                          ptkp_options=list(PTKP.keys()), factories=get_factories())
 
 @app.route('/employees/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_employee(id):
     conn = get_db()
     if request.method == 'POST':
@@ -260,6 +304,7 @@ def edit_employee(id):
                          ptkp_options=list(PTKP.keys()), factories=get_factories())
 
 @app.route('/employees/import', methods=['GET', 'POST'])
+@login_required
 def import_employees():
     """Bulk import employees from Excel/CSV."""
     if request.method == 'POST':
@@ -329,6 +374,7 @@ def import_employees():
     return render_template('import_employees.html')
 
 @app.route('/employees/template')
+@login_required
 def employee_template():
     """Download Excel template for bulk import."""
     df = pd.DataFrame({
@@ -356,6 +402,7 @@ def employee_template():
 # Attendance (Absensi)
 # ============================================================
 @app.route('/attendance')
+@login_required
 def attendance():
     period = request.args.get('period', date.today().strftime('%Y-%m'))
     conn = get_db()
@@ -372,6 +419,7 @@ def attendance():
 # SID (Status Ijin/Dispensasi) Import
 # ============================================================
 @app.route('/attendance/sid', methods=['GET', 'POST'])
+@login_required
 def import_sid():
     """Import SID template — attendance status (ijin, sakit, alpha, etc.)."""
     current_period = request.args.get('period', date.today().strftime('%Y-%m'))
@@ -421,6 +469,7 @@ def import_sid():
 
 
 @app.route('/attendance/sid/template')
+@login_required
 def download_sid_template():
     """Generate and download SID template for a given period."""
     period = request.args.get('period', date.today().strftime('%Y-%m'))
@@ -514,6 +563,7 @@ def download_sid_template():
 
 
 @app.route('/attendance/import', methods=['GET', 'POST'])
+@login_required
 def import_attendance():
     if request.method == 'POST':
         file = request.files.get('file')
@@ -544,6 +594,7 @@ def import_attendance():
 # Payroll (Penggajian)
 # ============================================================
 @app.route('/payroll')
+@login_required
 def payroll():
     period = request.args.get('period', date.today().strftime('%Y-%m'))
     factory_id = request.args.get('factory', '')
@@ -596,6 +647,7 @@ def payroll():
                          search=search)
 
 @app.route('/payroll/run', methods=['POST'])
+@login_required
 def run_payroll():
     period = request.form.get('period', date.today().strftime('%Y-%m'))
     include_thr = request.form.get('include_thr') == 'on'
@@ -611,6 +663,7 @@ def run_payroll():
     return redirect(url_for('payroll', period=period))
 
 @app.route('/payroll/import-excel', methods=['GET', 'POST'])
+@login_required
 def import_payroll_excel_route():
     """Import payroll data from factory Excel file."""
     if request.method == 'POST':
@@ -652,6 +705,7 @@ def import_payroll_excel_route():
     return render_template('import_payroll_excel.html', factories=get_factories())
 
 @app.route('/payroll/export/<period>')
+@login_required
 def export_payroll(period):
     conn = get_db()
     records = conn.execute('''
@@ -676,6 +730,7 @@ def export_payroll(period):
     return send_file(export_path, as_attachment=True)
 
 @app.route('/payroll/slip-all/<period>')
+@login_required
 def payroll_slip_all(period):
     factory_id = request.args.get('factory', '')
     conn = get_db()
@@ -704,6 +759,7 @@ def payroll_slip_all(period):
     return render_template('slip_gaji_all.html', records=records, period=period, factory_id=factory_id)
 
 @app.route('/payroll/slip/<int:payroll_id>')
+@login_required
 def payroll_slip(payroll_id):
     conn = get_db()
     record = conn.execute('''
@@ -724,6 +780,7 @@ def payroll_slip(payroll_id):
 # Payroll Preview (Mid-month)
 # ============================================================
 @app.route('/payroll/preview')
+@login_required
 def payroll_preview():
     search = request.args.get('search', '').strip()
     dept_filter = request.args.get('department', '').strip()
@@ -836,6 +893,7 @@ def _calc_actual_ot_hours(finger_out_str, normal_end='17:00', dinner_start='19:0
 
 
 @app.route('/overtime')
+@login_required
 def overtime():
     filter_date = request.args.get('date', date.today().isoformat())
     factory_id = request.args.get('factory', '')
@@ -878,6 +936,7 @@ def overtime():
 
 
 @app.route('/overtime/import', methods=['GET', 'POST'])
+@login_required
 def import_overtime():
     if request.method == 'POST':
         file = request.files.get('file')
@@ -970,6 +1029,7 @@ def import_overtime():
 
 
 @app.route('/overtime/match', methods=['POST'])
+@login_required
 def match_overtime():
     match_date = request.form.get('match_date', date.today().isoformat())
     conn = get_db()
@@ -1033,11 +1093,13 @@ def match_overtime():
 
 
 @app.route('/overtime/dashboard')
+@login_required
 def overtime_dashboard():
     return redirect(url_for('dashboard'))
 
 
 @app.route('/api/overtime-daily')
+@login_required
 def api_overtime_daily():
     """Return daily OT cost for current week (Mon-Fri)."""
     conn = get_db()
@@ -1061,6 +1123,7 @@ def api_overtime_daily():
 # Leave (Cuti) Management
 # ============================================================
 @app.route('/leave')
+@login_required
 def leave_page():
     selected_year = request.args.get('year', date.today().year, type=int)
     selected_factory = request.args.get('factory', '')
@@ -1096,6 +1159,7 @@ def leave_page():
         factories=get_factories())
 
 @app.route('/leave/init', methods=['POST'])
+@login_required
 def leave_init():
     year = request.form.get('year', date.today().year, type=int)
     stats = init_leave_balance(year)
@@ -1103,6 +1167,7 @@ def leave_init():
     return redirect(url_for('leave_page', year=year))
 
 @app.route('/leave/<int:employee_id>')
+@login_required
 def leave_detail(employee_id):
     year = request.args.get('year', date.today().year, type=int)
     balance, records = get_employee_leave_detail(employee_id, year)
@@ -1112,6 +1177,7 @@ def leave_detail(employee_id):
     return render_template('leave_detail.html', balance=balance, records=records, year=year)
 
 @app.route('/leave/<int:employee_id>/add', methods=['POST'])
+@login_required
 def leave_add(employee_id):
     leave_date = request.form['leave_date']
     leave_type = request.form.get('leave_type', 'cuti')
@@ -1125,6 +1191,7 @@ def leave_add(employee_id):
     return redirect(url_for('leave_detail', employee_id=employee_id, year=year))
 
 @app.route('/leave/<int:employee_id>/cancel', methods=['POST'])
+@login_required
 def leave_cancel(employee_id):
     leave_date = request.form['leave_date']
     year = request.form.get('year', date.today().year, type=int)
@@ -1139,6 +1206,7 @@ def leave_cancel(employee_id):
 # API endpoints for quick stats
 # ============================================================
 @app.route('/api/payroll-summary/<period>')
+@login_required
 def api_payroll_summary(period):
     conn = get_db()
     summary = conn.execute('''
@@ -1255,6 +1323,7 @@ def _get_finger_data(employee_id, month):
 
 
 @app.route('/finger')
+@login_required
 def finger_lookup():
     conn = get_db()
     q = request.args.get('q', '').strip()
@@ -1321,6 +1390,7 @@ def finger_lookup():
 
 
 @app.route('/finger/print')
+@login_required
 def finger_print():
     employee_id = request.args.get('employee_id', type=int)
     month = request.args.get('month', date.today().strftime('%Y-%m'))
@@ -1346,6 +1416,7 @@ def finger_print():
 
 
 @app.route('/finger/export')
+@login_required
 def finger_export():
     employee_id = request.args.get('employee_id', type=int)
     month = request.args.get('month', date.today().strftime('%Y-%m'))

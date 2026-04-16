@@ -75,6 +75,10 @@
             <a href="/leave" class="nav-link {% if '/leave' in request.path %}active{% endif %}">
                 <i class="bi bi-calendar-check"></i> Cuti (연차)
             </a>
+            <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 20px;">
+            <a href="/logout" class="nav-link text-warning">
+                <i class="bi bi-box-arrow-left"></i> Logout ({{ session.get('user', '') }})
+            </a>
         </nav>
     </div>
 
