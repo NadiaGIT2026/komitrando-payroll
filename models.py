@@ -90,12 +90,13 @@ class PgConnectionWrapper:
                 if sql.rstrip().endswith(')'):
                     sql += ' ON CONFLICT DO NOTHING'
         
-        # Handle INSERT OR REPLACE → use DELETE+INSERT for PostgreSQL
+        # Handle INSERT OR REPLACE → use ON CONFLICT with constraint name for PostgreSQL
         if 'OR REPLACE' in original_sql.upper():
-            # For PostgreSQL, we handle upsert via ON CONFLICT with constraint name
-            if 'attendance' in original_sql.lower():
+            # Match table name precisely: "INTO attendance" vs "INTO payroll"
+            sql_lower = original_sql.lower()
+            if 'into attendance' in sql_lower:
                 sql += ' ON CONFLICT ON CONSTRAINT attendance_employee_id_date_key DO UPDATE SET clock_in=EXCLUDED.clock_in, clock_out=EXCLUDED.clock_out, status=EXCLUDED.status, overtime_hours=EXCLUDED.overtime_hours'
-            elif 'payroll' in original_sql.lower():
+            elif 'into payroll' in sql_lower:
                 sql += (' ON CONFLICT ON CONSTRAINT payroll_employee_id_period_key DO UPDATE SET '
                         'work_days=EXCLUDED.work_days, absent_days=EXCLUDED.absent_days, '
                         'base_salary=EXCLUDED.base_salary, gross_salary=EXCLUDED.gross_salary, '
