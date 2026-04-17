@@ -91,8 +91,7 @@ def _calc_overtime_hours(clock_in_str, clock_out_str, date_str, is_all_in, is_sa
             total_minutes -= 30
 
         total_hours = max(0, total_minutes / 60.0)
-        if is_all_in:
-            total_hours = max(0, total_hours - 3)
+        # ALL IN 휴일: 차감 없이 전체 OT
         total_hours = int(total_hours * 2) / 2.0  # 0.5단위 내림
         return 0.0, total_hours
     else:
