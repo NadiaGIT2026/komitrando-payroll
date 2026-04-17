@@ -90,13 +90,20 @@ class PgConnectionWrapper:
                 if sql.rstrip().endswith(')'):
                     sql += ' ON CONFLICT DO NOTHING'
         
-        # Handle INSERT OR REPLACE for attendance
-        if 'OR REPLACE' in original_sql.upper() and 'attendance' in original_sql.lower():
-            sql += (' ON CONFLICT (employee_id, "date") DO UPDATE SET '
-                    'clock_in=EXCLUDED.clock_in, clock_out=EXCLUDED.clock_out, '
-                    'status=EXCLUDED.status, overtime_hours=EXCLUDED.overtime_hours')
-        elif 'OR REPLACE' in original_sql.upper() and 'payroll' in original_sql.lower():
-            sql += ' ON CONFLICT (employee_id, period) DO UPDATE SET net_salary=EXCLUDED.net_salary'
+        # Handle INSERT OR REPLACE → use DELETE+INSERT for PostgreSQL
+        if 'OR REPLACE' in original_sql.upper():
+            # For PostgreSQL, we handle upsert via ON CONFLICT with constraint name
+            if 'attendance' in original_sql.lower():
+                sql += ' ON CONFLICT ON CONSTRAINT attendance_employee_id_date_key DO UPDATE SET clock_in=EXCLUDED.clock_in, clock_out=EXCLUDED.clock_out, status=EXCLUDED.status, overtime_hours=EXCLUDED.overtime_hours'
+            elif 'payroll' in original_sql.lower():
+                sql += (' ON CONFLICT ON CONSTRAINT payroll_employee_id_period_key DO UPDATE SET '
+                        'work_days=EXCLUDED.work_days, absent_days=EXCLUDED.absent_days, '
+                        'base_salary=EXCLUDED.base_salary, gross_salary=EXCLUDED.gross_salary, '
+                        'overtime_pay=EXCLUDED.overtime_pay, overtime_total_hours=EXCLUDED.overtime_total_hours, '
+                        'total_deductions=EXCLUDED.total_deductions, net_salary=EXCLUDED.net_salary, '
+                        'deduction_absence=EXCLUDED.deduction_absence, deduction_late=EXCLUDED.deduction_late, '
+                        'bpjs_total_employee=EXCLUDED.bpjs_total_employee, bpjs_total_company=EXCLUDED.bpjs_total_company, '
+                        'import_source=EXCLUDED.import_source')
         
         cur = self._conn.cursor(row_factory=dict_row)
         try:
@@ -377,6 +384,44 @@ def _init_postgres(conn):
             UNIQUE(employee_id, leave_date)
         )
     ''')
+
+    # ── Ensure named unique constraints exist (for ON CONFLICT) ──
+    # attendance: attendance_employee_id_date_key
+    cur.execute("""
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'attendance_employee_id_date_key'
+    """)
+    if not cur.fetchone():
+        try:
+            # Drop anonymous constraint if exists, then create named one
+            cur.execute("""
+                ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_employee_id_date_key;
+                DO $$ BEGIN
+                    ALTER TABLE attendance ADD CONSTRAINT attendance_employee_id_date_key
+                        UNIQUE (employee_id, date);
+                EXCEPTION WHEN duplicate_table THEN NULL;
+                END $$;
+            """)
+        except Exception:
+            conn.rollback()
+
+    # payroll: payroll_employee_id_period_key
+    cur.execute("""
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'payroll_employee_id_period_key'
+    """)
+    if not cur.fetchone():
+        try:
+            cur.execute("""
+                ALTER TABLE payroll DROP CONSTRAINT IF EXISTS payroll_employee_id_period_key;
+                DO $$ BEGIN
+                    ALTER TABLE payroll ADD CONSTRAINT payroll_employee_id_period_key
+                        UNIQUE (employee_id, period);
+                EXCEPTION WHEN duplicate_table THEN NULL;
+                END $$;
+            """)
+        except Exception:
+            conn.rollback()
 
     conn.commit()
 
