@@ -200,9 +200,9 @@ def _calc_status_and_ot(clock_in, clock_out, date_str, department, is_all_in, ho
                     ot_minutes -= 30
                 overtime_hours = max(0, ot_minutes / 60.0)
 
-            # ALL IN: only count OT after 4 hours extra
-            if is_all_in and overtime_hours > 0:
-                overtime_hours = max(0, overtime_hours - 4.0)
+        # ALL IN: only count OT after 3 hours extra (평일+휴일 공통)
+        if is_all_in and overtime_hours > 0:
+            overtime_hours = max(0, overtime_hours - 3.0)
 
         # Cap: 4 hours/day max
         overtime_hours = min(overtime_hours, 4.0)

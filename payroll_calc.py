@@ -1,7 +1,7 @@
 # payroll_calc.py — Core payroll calculation engine
 # 규칙: effective_salary = base_salary + masa_kerja
 # OT/BPJS/결근공제 모두 effective_salary 기준
-# ALL IN (is_all_in=1): 정상근무일 4시간 초과분부터 OT
+# ALL IN (is_all_in=1): 정상근무일 3시간 초과분부터 OT
 # VIP (is_all_in=2): 고정 월급, 출퇴근/OT/공제 없음. TGK 그대로 지급
 # 경비(Satpam): OT 적용 안 함
 
@@ -92,7 +92,7 @@ def _calc_overtime_hours(clock_in_str, clock_out_str, date_str, is_all_in, is_sa
 
         total_hours = max(0, total_minutes / 60.0)
         if is_all_in:
-            total_hours = max(0, total_hours - 4)
+            total_hours = max(0, total_hours - 3)
         total_hours = int(total_hours * 2) / 2.0  # 0.5단위 내림
         return 0.0, total_hours
     else:
@@ -108,7 +108,7 @@ def _calc_overtime_hours(clock_in_str, clock_out_str, date_str, is_all_in, is_sa
 
         ot_hours = max(0, ot_minutes / 60.0)
         if is_all_in:
-            ot_hours = max(0, ot_hours - 4)
+            ot_hours = max(0, ot_hours - 3)
         ot_hours = int(ot_hours * 2) / 2.0
         return ot_hours, 0.0
 
