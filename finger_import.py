@@ -135,33 +135,144 @@ def process_attendance(records):
     
     return attendance
 
+def _calc_status_and_ot(clock_in, clock_out, date_str, department, is_all_in, holidays_set):
+    """
+    Calculate attendance status and OT hours based on clock_in/clock_out.
+    Returns (status, overtime_hours).
+    """
+    from datetime import datetime as dt, date as date_cls
+    import calendar
+
+    status = 'present'
+    overtime_hours = 0.0
+
+    if not clock_in:
+        return ('present', 0.0)
+
+    # Determine if it's a holiday/weekend
+    try:
+        d = date_cls.fromisoformat(date_str)
+        is_weekend = d.weekday() >= 5  # Sat=5, Sun=6
+        is_holiday = date_str in holidays_set or is_weekend
+    except:
+        is_holiday = False
+
+    # Parse times
+    try:
+        ci = dt.strptime(clock_in[:5], '%H:%M')
+    except:
+        return ('present', 0.0)
+
+    # ── Status: late detection (weekday only) ──
+    # Tolerance: 08:15 (15분 tolerance)
+    if not is_holiday:
+        dept_upper = (department or '').upper()
+        # Security (3-shift) — no late check
+        if dept_upper not in ('SECURITY', 'SATPAM'):
+            late_threshold = dt.strptime('08:15', '%H:%M')
+            if ci > late_threshold:
+                status = 'late'
+
+    # ── OT calculation ──
+    if clock_out and clock_in != clock_out:
+        try:
+            co = dt.strptime(clock_out[:5], '%H:%M')
+        except:
+            return (status, 0.0)
+
+        if is_holiday:
+            # Holiday: all worked hours count as OT (simplified)
+            worked_minutes = (co - ci).total_seconds() / 60.0
+            if worked_minutes > 60:  # at least 1 hour to count
+                # Deduct 1 hour break if > 4 hours
+                if worked_minutes > 240:
+                    worked_minutes -= 60
+                overtime_hours = max(0, worked_minutes / 60.0)
+        else:
+            # Weekday: OT = time after normal end
+            dept_upper = (department or '').upper()
+            normal_end = dt.strptime('17:30', '%H:%M') if dept_upper == 'OFFICE' else dt.strptime('17:00', '%H:%M')
+
+            if co > normal_end:
+                ot_minutes = (co - normal_end).total_seconds() / 60.0
+                # Deduct dinner 30min if clock_out >= 20:00
+                if co >= dt.strptime('20:00', '%H:%M'):
+                    ot_minutes -= 30
+                overtime_hours = max(0, ot_minutes / 60.0)
+
+            # ALL IN: only count OT after 4 hours extra
+            if is_all_in and overtime_hours > 0:
+                overtime_hours = max(0, overtime_hours - 4.0)
+
+        # Cap: 4 hours/day max
+        overtime_hours = min(overtime_hours, 4.0)
+        overtime_hours = round(overtime_hours, 1)
+
+    return (status, overtime_hours)
+
+
 def save_attendance(attendance_list):
     """Save processed attendance to database, matching finger_id to employee."""
     conn = get_db()
     saved = 0
     skipped = 0
-    
+
+    # Load holidays set
+    holidays_set = set()
+    try:
+        hrows = conn.execute('SELECT date FROM holidays').fetchall()
+        holidays_set = {r['date'] if isinstance(r, dict) else r[0] for r in hrows}
+    except:
+        pass
+
     for att in attendance_list:
-        # Find employee by finger_id
+        # Find employee by finger_id (try finger_id first, then nik)
         emp = conn.execute(
-            'SELECT id FROM employees WHERE finger_id = ?',
+            'SELECT id, department, is_all_in FROM employees WHERE finger_id = ?',
             (att['finger_id'],)
         ).fetchone()
-        
+
+        if not emp:
+            emp = conn.execute(
+                'SELECT id, department, is_all_in FROM employees WHERE nik = ?',
+                (att['finger_id'],)
+            ).fetchone()
+
         if not emp:
             skipped += 1
             continue
-        
+
+        department = emp['department'] if emp['department'] else ''
+        is_all_in = bool(emp['is_all_in']) if emp['is_all_in'] else False
+
+        # Calculate status and OT
+        status, overtime_hours = _calc_status_and_ot(
+            att['clock_in'], att['clock_out'], att['date'],
+            department, is_all_in, holidays_set
+        )
+
         try:
+            # Check if record exists (don't overwrite SID/leave records)
+            existing = conn.execute(
+                'SELECT status FROM attendance WHERE employee_id = ? AND date = ?',
+                (emp['id'], att['date'])
+            ).fetchone()
+
+            if existing and existing['status'] in ('leave', 'sid'):
+                # Don't overwrite leave/SID with finger data
+                skipped += 1
+                continue
+
             conn.execute('''
-                INSERT OR REPLACE INTO attendance 
-                (employee_id, date, clock_in, clock_out, status)
-                VALUES (?, ?, ?, ?, 'present')
-            ''', (emp['id'], att['date'], att['clock_in'], att['clock_out']))
+                INSERT OR REPLACE INTO attendance
+                (employee_id, date, clock_in, clock_out, status, overtime_hours)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (emp['id'], att['date'], att['clock_in'], att['clock_out'],
+                  status, overtime_hours))
             saved += 1
         except Exception:
             skipped += 1
-    
+
     conn.commit()
     conn.close()
     return {'saved': saved, 'skipped': skipped}

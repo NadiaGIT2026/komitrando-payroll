@@ -92,7 +92,9 @@ class PgConnectionWrapper:
         
         # Handle INSERT OR REPLACE for attendance
         if 'OR REPLACE' in original_sql.upper() and 'attendance' in original_sql.lower():
-            sql += ' ON CONFLICT (employee_id, date) DO UPDATE SET clock_in=EXCLUDED.clock_in, clock_out=EXCLUDED.clock_out, status=EXCLUDED.status'
+            sql += (' ON CONFLICT (employee_id, "date") DO UPDATE SET '
+                    'clock_in=EXCLUDED.clock_in, clock_out=EXCLUDED.clock_out, '
+                    'status=EXCLUDED.status, overtime_hours=EXCLUDED.overtime_hours')
         elif 'OR REPLACE' in original_sql.upper() and 'payroll' in original_sql.lower():
             sql += ' ON CONFLICT (employee_id, period) DO UPDATE SET net_salary=EXCLUDED.net_salary'
         
