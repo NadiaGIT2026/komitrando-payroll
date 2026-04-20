@@ -1519,3 +1519,23 @@ init_db()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5050, debug=True)
+
+
+@app.route('/debug-db')
+def debug_db():
+    """Temporary debug endpoint."""
+    import os
+    info = {}
+    info['DATABASE_URL_set'] = bool(os.environ.get('DATABASE_URL'))
+    info['DATABASE_URL_starts'] = os.environ.get('DATABASE_URL', '')[:30] + '...'
+    try:
+        from models import USE_POSTGRES, DATABASE_URL as DB_URL
+        info['USE_POSTGRES'] = USE_POSTGRES
+        info['DB_URL_starts'] = DB_URL[:30] + '...'
+        conn = get_db()
+        info['employees'] = conn.execute('SELECT COUNT(*) FROM employees').fetchone()[0]
+        info['payroll'] = conn.execute('SELECT COUNT(*) FROM payroll').fetchone()[0]
+        conn.close()
+    except Exception as e:
+        info['error'] = str(e)
+    return info
