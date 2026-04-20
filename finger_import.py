@@ -192,8 +192,10 @@ def _calc_status_and_ot(clock_in, clock_out, date_str, department, is_all_in, ho
             # Weekday: OT = time after normal end
             dept_upper = (department or '').upper()
             normal_end = dt.strptime('17:30', '%H:%M') if dept_upper == 'OFFICE' else dt.strptime('17:00', '%H:%M')
+            # OT tolerance: 15분 이내는 OT 아님
+            ot_threshold = dt.strptime('17:45', '%H:%M') if dept_upper == 'OFFICE' else dt.strptime('17:15', '%H:%M')
 
-            if co > normal_end:
+            if co > ot_threshold:
                 ot_minutes = (co - normal_end).total_seconds() / 60.0
                 # Deduct dinner 30min if clock_out >= 20:00
                 if co >= dt.strptime('20:00', '%H:%M'):
